@@ -16,18 +16,18 @@ class Callback
 
     public function __construct(Request $request)
     {
-        $this->request 	= $request;
+        $this->request = $request;
     }
 
     public function handleCallback(Route $route, array $dependencies = [])
     {
         $this->dependencies = $dependencies;
 
-		if (!empty($route->getMiddlewares())) {
-			$this->callMiddleware($route->getMiddlewares());
-		}
+        if (!empty($route->getMiddlewares())) {
+            $this->callMiddleware($route->getMiddlewares());
+        }
 
-		if (is_callable($route->getCallback())) {
+        if (is_callable($route->getCallback())) {
             return $this->callFunction($route->getCallback());
         }
 
@@ -37,7 +37,7 @@ class Callback
     private function callMiddleware($middlewares)
     {
         foreach ($middlewares as $middleware) {
-            $obj = new $middleware();
+            $obj = is_object($middleware) ? $middleware : new $middleware();
 
             if (!($obj instanceof PlugRouteMiddleware)) {
                 $message = "Error: the class {$middleware} should implement PlugRouteMiddleware.";
@@ -59,58 +59,58 @@ class Callback
     private function createObject($class)
     {
         if (!ValidateHelper::classExists($class)) {
-			return Error::throwException("Error: class {$class} don't exists.");
-		}
+            return Error::throwException("Error: class {$class} don't exists.");
+        }
 
-		$args = [];
-		$construct = '__construct';
+        $args = [];
+        $construct = '__construct';
 
-		if (ValidateHelper::methodExists($class, $construct)) {
-			$reflection = new \ReflectionMethod($class, $construct);
-			$args       = $this->getParameters($reflection);
-		}
+        if (ValidateHelper::methodExists($class, $construct)) {
+            $reflection = new \ReflectionMethod($class, $construct);
+            $args = $this->getParameters($reflection);
+        }
 
-		return new $class(...$args);
-	}
+        return new $class(...$args);
+    }
 
     private function callMethod($instance, $method)
     {
         if (!ValidateHelper::methodExists($instance, $method)) {
-			return Error::throwException("Error: method {$method} don't exists.");
-		}
+            return Error::throwException("Error: method {$method} don't exists.");
+        }
 
-		$reflection = new \ReflectionMethod($instance, $method);
-		$args 		= $this->getParameters($reflection);
+        $reflection = new \ReflectionMethod($instance, $method);
+        $args = $this->getParameters($reflection);
 
-		return $instance->$method(...$args);
-	}
+        return $instance->$method(...$args);
+    }
 
     private function callFunction($function)
     {
-		$reflection	= new \ReflectionFunction($function);
-		$args 		= $this->getParameters($reflection);
+        $reflection = new \ReflectionFunction($function);
+        $args = $this->getParameters($reflection);
         return $function(...$args);
     }
 
-	private function getParameters($reflection)
-	{
-		$params = $reflection->getParameters();
-		$args 	= [];
+    private function getParameters($reflection)
+    {
+        $params = $reflection->getParameters();
+        $args = [];
 
-		foreach ($params as $param) {
-			$type = $param->getType();
+        foreach ($params as $param) {
+            $type = $param->getType();
 
-			if (!$type->isBuiltin()) {
-				$class 			= new \ReflectionClass((string) $type);
-				$namespace[] 	= $class->getNamespaceName();
-				$namespace[] 	= $class->getShortName();
-				$object 		= implode('\\', $namespace);
-				$namespace 		= [];
-				$args[] 		= $this->getInstanceIfNamespaceIsRequest($object);
-			}
-		}
+            if (!$type->isBuiltin()) {
+                $class = new \ReflectionClass((string) $type);
+                $namespace[] = $class->getNamespaceName();
+                $namespace[] = $class->getShortName();
+                $object = implode('\\', $namespace);
+                $namespace = [];
+                $args[] = $this->getInstanceIfNamespaceIsRequest($object);
+            }
+        }
 
-		return $args;
+        return $args;
     }
 
     private function getInstanceIfNamespaceIsRequest($namespace)
